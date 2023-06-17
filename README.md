@@ -14,7 +14,7 @@
 
 <!-- Insert the project banner here -->
 <div align="center">
-    <a href="https://"><img width="1000px" height="auto" src="https://github.com/openmedlab/sampleProject/blob/main/banner_sample.png"></a>
+    <a href="https://"><img width="1000px" height="auto" src="https://github.com/openmedlab/PathoDuet/blob/main/banner.png"></a>
 </div>
 
 ---
@@ -53,7 +53,7 @@ In task 2, multi-stain reconstruction, the pretext token is a small patch croppe
 
 <!-- Insert a pipeline of your algorithm here if got one -->
 <div align="center">
-    <a href="https://"><img width="1000px" height="auto" src="https://github.com/hsymm/OpenTrial/blob/main/overall.png"></a>
+    <a href="https://"><img width="1000px" height="auto" src="https://github.com/openmedlab/PathoDuet/blob/main/overall.png"></a>
 </div>
 
 ## Dataset Links
