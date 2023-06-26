@@ -37,8 +37,7 @@ Key feature bulletin points here
 ## Links
 
 - [Paper](https://) 
-- [Model](https://) 
-- [Code](https://) 
+- [Model]([https://](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM)) 
 <!-- [Code] may link to your project at your institute>
 
 
@@ -84,11 +83,11 @@ cd PathoDuet
 
 **Download Model**
 
-You can find our pretrained model weights [here](https://).
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We provide you two versions of models, a purely MoCo v3 pretrained model using our dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon.
 
 **Prepare Dataset**
 
-The training dataset is cropped from TCGA, and should be arranged as
+If you want to go through the whole process, you need to first prepare the training dataset. The training dataset is cropped from TCGA, and should be arranged as
 ```bash
 TCGA
 ├── TCGA-ACC
@@ -111,7 +110,8 @@ To apply our data generating code, we recommend to install
 > openslide
 
 **Training**
-The code is partly modified from [MoCo v3](https://github.com/facebookresearch/moco-v3).
+
+The code is modified from [MoCo v3](https://github.com/facebookresearch/moco-v3).
 
 For basic MoCo v3 training, 
 ```bash
@@ -142,6 +142,7 @@ python main_bridge.py \
   [your dataset folders]
 ```
 
+## Performance on Downstream Tasks
 
 **Linear Evaluation**
 
@@ -150,16 +151,18 @@ We first follow the typical linear evaluation protocol used in [SimCLR](http://p
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.9347 | 0.9083 |
 | CTransPath |    Modified Swin Transformer   |   0.9556  | 0.9317 |
-| Ours-MoCo v3 | ViT-B/16  |    0.9561   | 0.9437 |
+| Ours-p1 | ViT-B/16  |    0.9561   | 0.9437 |
+| Ours-p2 | ViT-B/16  |    **0.9639**   | **0.9496** |
 
 **Full Fine-tuning**
 
-In practice, pretrained models are not freezed in use. Therefore, we also unfreeze the pretrained encoder and finetune all parameters.
+In practice, pretrained models are not freezed. Therefore, we also unfreeze the pretrained encoder and finetune all parameters.
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.9582 | 0.9450 |
 | CTransPath |    Modified Swin Transformer   |   0.9691 | 0.9601  |
-| Ours-MoCo v3 | ViT-B/16  |    0.9726 | 0.9602  |
+| Ours-p1 | ViT-B/16  |    0.9726 | 0.9602  |
+| Ours-p2 | ViT-B/16  |    **0.9731** | **0.9636**  |
 
 
 **WSI Classification**
@@ -169,7 +172,8 @@ For WSI classification
 |----------|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
 | CLAM-SB | 0.8837 | 0.9395 | 0.8943 | 0.9511 | 0.9285 | 0.9864|
 | CLAM-SB + CTransPath | 0.8682 | 0.9403 | 0.9040 | 0.9559 | 0.9275 | 0.9875|
-| CLAM-SB + Ours-MoCo v3 | 0.9147 | 0.9589 | 0.8898 | 0.9368 | 0.9478 | 0.9916|
+| CLAM-SB + Ours-p1 | 0.9147 | **0.9589** | 0.8898 | 0.9368 | 0.9478 | 0.9916|
+| CLAM-SB + Ours-p2 | **0.9302** | 0.9561 | **0.9075** | **0.9631** | **0.9542** | **0.9929** |
 
 
 
