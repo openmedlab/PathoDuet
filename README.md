@@ -1,4 +1,4 @@
-# [Model/Code] PathoDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains
+# [Model/Code] PathDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains
 <!-- select Model and/or Data and/or Code as needed>
 ### Welcome to OpenMEDLab! 👋
 
@@ -27,7 +27,7 @@ Updated on 2023.06.15
 
 ## Key Features
 
-This repository provides the official implementation of PathoDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains.
+This repository provides the official implementation of PathDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains.
 
 Key feature bulletin points here
 - A foundation model for histopathological image analysis.
