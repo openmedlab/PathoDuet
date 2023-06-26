@@ -37,7 +37,7 @@ Key feature bulletin points here
 ## Links
 
 - [Paper](https://) 
-- [Model]([https://](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM)) 
+- [Model](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM)
 <!-- [Code] may link to your project at your institute>
 
 
