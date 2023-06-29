@@ -82,7 +82,7 @@ cd PathoDuet
 
 **Download Model**
 
-If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon. You can try our model by the following codes.
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon (no later than the late July, 2023). You can try our model by the following codes.
 
 ```bash
 from vits import VisionTransformerMoCo
