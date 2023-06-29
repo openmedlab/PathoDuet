@@ -184,22 +184,12 @@ In practice, pretrained models are not freezed. Therefore, we also unfreeze the 
 
 For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTransPath filtered out some WSI in TCGA-NSCLC and TCGA-RCC due to some image quality consideration, so the performance of CTransPath is a reproduced one using their open model on the whole dataset, marked as CTP (Repro).
 
-| |  |  Original (Ours) |  CTransPath | 
-|----------|------|:-----:|:-----:|
-| TCGA-NSCLC| Total | 1053 | 993 | 
-|  | LUSC | 512 | 486 | 
-|  | LUAD | 541 | 507 | 
-| TCGA-RCC | Total | 940 | 884 | 
-|  | KICH | 121 | 111 | 
-|  | KIRC | 519 | 489 | 
-|  | KIRP | 300 | 284 | 
-
 | Methods   |   CAMELYON16: ACC |  CAMELYON16: AUC |  TCGA-NSCLC: ACC |  TCGA-NSCLC: AUC |  TCGA-RCC: ACC |  TCGA-RCC: AUC |
 |----------|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
 | CLAM-SB | 0.884 | 0.940 | 0.894 | 0.951 | 0.929 | 0.986|
 | CLAM-SB + CTP (Repro) | 0.868 | 0.940 | 0.904 | 0.956 | 0.928 | 0.987 |
 | CLAM-SB + Ours-p1 | 0.912 | **0.959** | 0.890 | 0.937 | 0.948 | 0.992 |
-| CLAM-SB + Ours-p2 | **0.930** | 0.956 | 0**.908** | **0.963** | **0.954** | **0.993** |
+| CLAM-SB + Ours-p2 | **0.930** | 0.956 | **0.908** | **0.963** | **0.954** | **0.993** |
 
 
 
