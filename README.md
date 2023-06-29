@@ -21,7 +21,7 @@
 
 <!-- Select some of the point info, feel free to delete -->
 
-Updated on 2023.06.15
+Updated on 2023.06.29
 
 
 
@@ -83,7 +83,7 @@ cd PathoDuet
 
 **Download Model**
 
-If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We provide you two versions of models, a purely MoCo v3 pretrained model using our dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon.
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon.
 
 **Prepare Dataset**
 
@@ -188,13 +188,5 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 
 ## 📝 Citation
 
-If you find this repository useful, please consider citing this paper:
-```
-@article{nobody,
-  title={paper},
-  author={nobody},
-  journal={arXiv preprint arXiv:},
-  year={2023}
-}
-```
+If you find this repository useful, please consider citing our later released paper.
 
