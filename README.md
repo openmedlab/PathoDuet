@@ -32,7 +32,7 @@ This repository provides the official implementation of PathoDuet: Foundation Mo
 Key feature bulletin points here
 - A foundation model for histopathological image analysis.
 - The model covers both H&E and IHC stained images.
-- The model achieves outstanding performance on both linear evaluation and full finetuning of patch classification.
+- The model achieves outstanding performance on both patch classification (following either a typical linear evaluation scheme, or a usual full fine-tuning scheme) and weakly-supervised WSl classification (using CLAM-SB).
 
 ## Links
 
@@ -82,7 +82,21 @@ cd PathoDuet
 
 **Download Model**
 
-If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon.
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon. You can try our model by the following codes.
+
+```bash
+from vits import VisionTransformerMoCo
+# init the model
+model = VisionTransformerMoCo(bridge_token=True, global_pool='avg')
+# init the fc layer
+model.head = nn.Linear(768, args.num_classes)
+# load checkpoint
+checkpoint = torch.load(your_checkpoint_path, map_location="cpu")
+model.load_state_dict(checkpoint, strict=False)
+# Your own tasks
+```
+
+Please note that considering the gap between pathological images and natural images, we do not use a normalize function in data augmentation.
 
 **Prepare Dataset**
 
@@ -143,19 +157,21 @@ python main_bridge.py \
 
 ## Performance on Downstream Tasks
 
+We provide performance evaluation on some downstream tasks, and compare our models with ImageNet-pretrained models (using weights of MoCo v3) and [CTransPath](https://github.com/Xiyue-Wang/TransPath/tree/main). ImageNet has shown its great generalization ability in many pretrained models, so we choose MoCo v3's model as a baseline. CTransPath is also a pretrained model in pathology, which is based on 15 million patches from TCGA and PAIP. CTransPath has shown state-of-the-art performance on many pathological tasks of different diseases and sites. 
+
 **Linear Evaluation**
 
 We first follow the typical linear evaluation protocol used in [SimCLR](http://proceedings.mlr.press/v119/chen20j.html), which freezes all layers in the pretrained model and trains a newly-added linear layer from scratch. 
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.9347 | 0.9083 |
-| CTransPath |    Modified Swin Transformer   |   0.9556  | 0.9317 |
+| CTransPath |    Modified Swin Transformer   |   **0.9652**  | 0.9482 |
 | Ours-p1 | ViT-B/16  |    0.9561   | 0.9437 |
-| Ours-p2 | ViT-B/16  |    **0.9639**   | **0.9496** |
+| Ours-p2 | ViT-B/16  |    0.9639   | **0.9496** |
 
 **Full Fine-tuning**
 
-In practice, pretrained models are not freezed. Therefore, we also unfreeze the pretrained encoder and finetune all parameters.
+In practice, pretrained models are not freezed. Therefore, we also unfreeze the pretrained encoder and finetune all parameters. It is noted that the performance of CTransPath is based on their open model.
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.9582 | 0.9450 |
@@ -166,13 +182,24 @@ In practice, pretrained models are not freezed. Therefore, we also unfreeze the 
 
 **WSI Classification**
 
-For WSI classification
+For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTransPath filtered out some WSI in TCGA-NSCLC and TCGA-RCC due to some image quality consideration, so the performance of CTransPath is a reproduced one using their open model on the whole dataset, marked as CTP (Repro).
+
+| |  |  Original (Ours) |  CTransPath |  TCGA-NSCLC: AUC |  TCGA-RCC: ACC |  TCGA-RCC: AUC |
+|----------|------|:-----:|:-----:|
+| TCGA-NSCLC| Total | 1053 | 993 | 
+|  | LUSC | 512 | 486 | 
+|  | LUAD | 541 | 507 | 
+| TCGA-RCC | Total | 940 | 884 | 
+|  | KICH | 121 | 111 | 
+|  | KIRC | 519 | 489 | 
+|  | KIRP | 300 | 284 | 
+
 | Methods   |   CAMELYON16: ACC |  CAMELYON16: AUC |  TCGA-NSCLC: ACC |  TCGA-NSCLC: AUC |  TCGA-RCC: ACC |  TCGA-RCC: AUC |
 |----------|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
-| CLAM-SB | 0.8837 | 0.9395 | 0.8943 | 0.9511 | 0.9285 | 0.9864|
-| CLAM-SB + CTransPath | 0.8682 | 0.9403 | 0.9040 | 0.9559 | 0.9275 | 0.9875|
-| CLAM-SB + Ours-p1 | 0.9147 | **0.9589** | 0.8898 | 0.9368 | 0.9478 | 0.9916|
-| CLAM-SB + Ours-p2 | **0.9302** | 0.9561 | **0.9075** | **0.9631** | **0.9542** | **0.9929** |
+| CLAM-SB | 0.884 | 0.940 | 0.894 | 0.951 | 0.929 | 0.986|
+| CLAM-SB + CTP (Repro) | 0.868 | 0.940 | 0.904 | 0.956 | 0.928 | 0.987 |
+| CLAM-SB + Ours-p1 | 0.912 | **0.959** | 0.890 | 0.937 | 0.948 | 0.992 |
+| CLAM-SB + Ours-p2 | **0.930** | 0.956 | 0**.908** | **0.963** | **0.954** | **0.993** |
 
 
 
@@ -188,4 +215,3 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 ## 📝 Citation
 
 If you find this repository useful, please consider citing our later released paper.
-
