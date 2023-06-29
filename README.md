@@ -184,7 +184,7 @@ In practice, pretrained models are not freezed. Therefore, we also unfreeze the 
 
 For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTransPath filtered out some WSI in TCGA-NSCLC and TCGA-RCC due to some image quality consideration, so the performance of CTransPath is a reproduced one using their open model on the whole dataset, marked as CTP (Repro).
 
-| |  |  Original (Ours) |  CTransPath |  TCGA-NSCLC: AUC |  TCGA-RCC: ACC |  TCGA-RCC: AUC |
+| |  |  Original (Ours) |  CTransPath | 
 |----------|------|:-----:|:-----:|
 | TCGA-NSCLC| Total | 1053 | 993 | 
 |  | LUSC | 512 | 486 | 
