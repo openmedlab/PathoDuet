@@ -21,7 +21,7 @@
 
 <!-- Select some of the point info, feel free to delete -->
 
-Updated on 2023.06.29
+Updated on 2023.07.28. Fix some name bugs (`pretext_token` rather than `bridge_token` in the `state_dict`).
 
 
 
