@@ -87,7 +87,7 @@ If you just require a pretrain model for your own task, you can find our pretrai
 ```bash
 from vits import VisionTransformerMoCo
 # init the model
-model = VisionTransformerMoCo(bridge_token=True, global_pool='avg')
+model = VisionTransformerMoCo(pretext_token=True, global_pool='avg')
 # init the fc layer
 model.head = nn.Linear(768, args.num_classes)
 # load checkpoint
