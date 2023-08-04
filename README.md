@@ -20,8 +20,7 @@
 ---
 
 <!-- Select some of the point info, feel free to delete -->
-
-Updated on 2023.07.28. Fix some name bugs (`pretext_token` rather than `bridge_token` in the `state_dict`).
+Updated on 2023.08.04. Sorry for the late release. Now the p3 model is available! The paper link will be available in next update soon.
 
 
 
@@ -47,7 +46,7 @@ Our model is based on a new self-supervised learning (SSL) framework. This frame
 
 In task 1, patch positioning, the pretext token is a small patch contained in a large region. The special relation inspires us to position this patch in the region and use the features of the region to generate the feature of the patch in a global view. The patch is also sent to the encoder solely to obtain a local-view feature. The two features are pulled together to strengthen the model. 
 
-In task 2, multi-stain reconstruction, the pretext token is a small patch cropped from an image of one stain (IHC). The main input is the image of the other stain (H&E), and gets masked before the encoder. These two images are roughly registered, so it is possible to recover the image of the first stain giving only a small part of itself (stain information) and a whole image of the second stain (structure information). The two parts of features are concatenated and sent into the decoder, and finally reconstruct the image of the first stain.
+In task 2, multi-stain reconstruction, the pretext token is a small patch cropped from an image of one stain (H&E). The main input is the image of the other stain (IHC), and gets masked before the encoder. These two images are roughly registered, so it is possible to recover the image of the first stain giving only a small part of itself (stain information) and a whole image of the second stain (structure information). The two parts of features are concatenated and sent into the decoder, and finally reconstruct the image of the first stain.
 
 <!-- Insert a pipeline of your algorithm here if got one -->
 <div align="center">
@@ -58,8 +57,10 @@ In task 2, multi-stain reconstruction, the pretext token is a small patch croppe
 
 - [The Cancer Genome Atlas (TCGA)](https://portal.gdc.cancer.gov/) for SSL.
 - [UniToPatho](https://ieee-dataport.org/open-access/unitopatho) for patch retrieval.
-- [NCT-CRC-HE](https://zenodo.org/record/1214456#.YVrmANpBwRk) and [CRC](https://zenodo.org/record/53169#.YRfeKYgzbmE), also known as the Kather datasets, for patch classification.
+- [NCT-CRC-HE](https://zenodo.org/record/1214456#.YVrmANpBwRk), also known as the Kather datasets, for patch classification.
 - [Camelyon 16](https://camelyon16.grand-challenge.org/) for weakly-supervised WSI classification.
+- [HyReCo](https://ieee-dataport.org/open-access/hyreco-hybrid-re-stained-and-consecutive-histological-serial-sections) for training in task 2.
+- [BCI Dataset](https://bci.grand-challenge.org/) for training in task 2 and evaluation on classification.
 
 ## Get Started
 
@@ -82,9 +83,15 @@ cd PathoDuet
 
 **Download Model**
 
-If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models, a purely MoCo v3 pretrained model using our H&E dataset (later referred to as p1), and a model pretrained with patch positioning (later referred to as p2). The model pretrained with multi-stain transferring will be released soon (no later than the late July, 2023). You can try our model by the following codes.
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you three versions of models.
 
-```bash
+- A purely MoCo v3 pretrained model using our H&E dataset, namely the p1 model. For those who need developing their own SSL learning method, this model can be a simple baseline.
+- A model pretrained with patch position task (p2 model). This model further strengthens its representation of H&E images.
+- A model fine-tuned towards IHC images with multi-stain reconstruction task (p3 model). This model transfers the strong H&E model to an interpreter of IHC images.
+
+You can try our model by the following codes.
+
+```python
 from vits import VisionTransformerMoCo
 # init the model
 model = VisionTransformerMoCo(pretext_token=True, global_pool='avg')
@@ -100,7 +107,7 @@ Please note that considering the gap between pathological images and natural ima
 
 **Prepare Dataset**
 
-If you want to go through the whole process, you need to first prepare the training dataset. The training dataset is cropped from TCGA, and should be arranged as
+If you want to go through the whole process, you need to first prepare the training dataset. The H&E training dataset is cropped from TCGA, and should be arranged as
 ```bash
 TCGA
 ├── TCGA-ACC
@@ -122,12 +129,36 @@ TCGA
 To apply our data generating code, we recommend to install
 > openslide
 
+The dataset in task 2 should be arranged like
+```bash
+root
+├── Dataset1
+│   ├── HE
+│   │   ├── 001.png
+│   │   ├── a.png
+│   │   └── ...
+│   ├── IHC1
+│   │   ├── 001.png
+│   │   ├── a.png
+│   │   └── ...
+│   └── IHC2
+│       ├── 001.png
+│       ├── a.png
+│       └── ...
+├── Dataset2
+│   ├── HE
+│   │   └── ...
+│   └── IHC
+│       └── ...
+└── ...
+```
+
 **Training**
 
 The code is modified from [MoCo v3](https://github.com/facebookresearch/moco-v3).
 
 For basic MoCo v3 training, 
-```bash
+```python
 python main_moco.py \
   --tcga ./used_TCGA.csv \
   -a vit_base -b 2048 --workers 128 \
@@ -141,7 +172,7 @@ python main_moco.py \
 ```
 
 For a further patch positioning pretext task, 
-```bash
+```python
 python main_bridge.py \
   --tcga ./used_TCGA.csv \
   -a vit_base -b 2048 --workers 128 \
@@ -152,6 +183,20 @@ python main_bridge.py \
   --dist-url 'tcp://localhost:10001' \
   --ckp ./phase2 \
   --firstphase ./checkpoint_0099.pth.tar \
+  [your dataset folders]
+```
+
+For a further multi-stain reconstruction task, 
+```python
+python main_cross.py \
+  -a vit_base -b 2048 --workers 128 \
+  --optimizer=adamw --lr=1.5e-4 --weight-decay=.1 \
+  --epochs=500 --warmup-epochs=100 \
+  --stop-grad-conv1 \
+  --multiprocessing-distributed --world-size 1 --rank 0 \
+  --dist-url 'tcp://localhost:10001' \
+  --ckp ./phase3 \
+  --firstphase .phase2/checkpoint_0099.pth.tar \
   [your dataset folders]
 ```
 
@@ -190,6 +235,15 @@ For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTra
 | CLAM-SB + CTP (Repro) | 0.868 | 0.940 | 0.904 | 0.956 | 0.928 | 0.987 |
 | CLAM-SB + Ours-p1 | 0.912 | **0.959** | 0.890 | 0.937 | 0.948 | 0.992 |
 | CLAM-SB + Ours-p2 | **0.930** | 0.956 | **0.908** | **0.963** | **0.954** | **0.993** |
+
+
+**Patch Classification (IHC images)**
+We compare our model p3's performance with ImageNet-MoCo v3 and CTransPath as well. Note that the training data used in CTransPath contains some IHC slides (in PAIP). Here, X-L means the performance using linear probing (bACC stands for balanced accuracy), and X-F using full fine-tuning scheme. We find that ignoring the last ``LayerNorm`` in CTransPath and our p1/p2 model can significantly improve the performance on IHC linear evaluation, so we do not load this layer.
+| Methods   |      Backbone      |  ACC-L |   bACC-L | F1-L |  ACC-F | bACC-F | F1-F |
+|----------|:----------:|:------:|:-----:|:------:|:-----:|:------:|:-----:|
+| ImageNet-MoCo v3 |  ViT-B/16 | 0.8137 | 0.7760 | 0.7873 | 0.9396 | 0.9248 | 0.9379 |
+| CTransPath |    Modified SwinT   |  0.8567   | 0.8535 | 0.8598 |  **0.9621**   | 0.9530 | 0.9582 |
+| Ours-p3 | ViT-B/16  |   **0.8731**    | **0.8571** | **0.8611** |   **0.9621**    | **0.9588** | **0.9605** |
 
 
 
