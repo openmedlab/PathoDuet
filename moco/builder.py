@@ -61,6 +61,11 @@ class MoCo(nn.Module):
         for param_b, param_m in zip(self.base_encoder.parameters(), self.momentum_encoder.parameters()):
             param_m.data = param_m.data * m + param_b.data * (1. - m)
 
+    def byol_loss(self, q, k):
+        norm_q = F.normalize(q, dim=1, eps=1e-6)
+        norm_k = F.normalize(k, dim=1, eps=1e-6)
+        return 1.0 - torch.einsum('ij,ij->i', [norm_q, norm_k]).mean()
+
     def contrastive_loss(self, q, k):
         # normalize
         q = nn.functional.normalize(q, dim=1)
@@ -96,7 +101,17 @@ class MoCo(nn.Module):
             _, k1 = self.momentum_encoder(x1)
             _, k2 = self.momentum_encoder(x2)
 
-        loss = self.contrastive_loss(q1, k2) + self.contrastive_loss(q2, k1)
+        # loss = self.contrastive_loss(q1.float(), k2.float()) + self.contrastive_loss(q2.float(), k1.float())
+        loss = self.contrastive_loss(q1.float(), k2.float()) + self.contrastive_loss(q2.float(), k1.float())
+        # loss.type_as(q1)
+        # if torch.isnan(loss):
+        #     with open('/mnt/petrelfs/yanfang/pretrain_tmp/codes/train/moco/nan2.log', 'a') as f:
+        #         f.write('tmp1: {}\n'.format(tmp1))
+        #         f.write('tmp2: {}\n'.format(tmp2))
+        #         f.write('q1: {}\n'.format(q1))
+        #         f.write('q2: {}\n'.format(q2))
+        #         f.write('k1: {}\n'.format(k1))
+        #         f.write('k2: {}\n'.format(k2))
         return loss
 
 
@@ -125,7 +140,7 @@ class MoCo_ViT(MoCo):
         # predictor
         self.predictor = self._build_mlp(2, dim, mlp_dim, dim)
 
-class PatchPositioning(nn.Module):
+class Bridge(nn.Module):
     """
     Build a MoCo model with a base encoder, a momentum encoder, and two MLPs
     https://arxiv.org/abs/1911.05722
@@ -136,7 +151,7 @@ class PatchPositioning(nn.Module):
         mlp_dim: hidden dimension in MLPs (default: 4096)
         T: softmax temperature (default: 1.0)
         """
-        super(PatchPositioning, self).__init__()
+        super(Bridge, self).__init__()
 
         self.T = T
         self.B_T = B_T
@@ -191,7 +206,7 @@ class PatchPositioning(nn.Module):
             param_m.data = param_m.data * m + param_b.data * (1. - m)
 
     def byol_loss(self, q, k):
-        return 1.0 - nn.CosineSimilarity()(q, k).mean()
+        return 1.001 - nn.CosineSimilarity()(q, k).mean()
 
     def moco_loss(self, q, k):
         # normalize
@@ -208,10 +223,8 @@ class PatchPositioning(nn.Module):
     def forward(self, x1, x2, x, r, m):
         """
         Input:
-            x1: first views of patches
-            x2: second views of patches
-            x: original view of patches as pretext token
-            r: augmented regions
+            x1: first views of images
+            x2: second views of images
             m: moco momentum
         Output:
             loss
@@ -225,8 +238,8 @@ class PatchPositioning(nn.Module):
         q2 = self.predictor(feat2)
 
         c_feat = out_R[:, self.base_encoder.num_prefix_tokens:]
-        pos1 = self.positioner(out_R[:, 0])
-        pos2 = F.softmax(pos1, dim=-1)
+        pos1 = self.positioner(out_R[:, 0].float())
+        pos2 = F.softmax(pos1.float(), dim=-1).type_as(out_R)
         K1 = self.base_encoder.head(torch.einsum("ijk,ij->ik", [c_feat, pos2]))
         Q1 = self.predictor(K1)
 
@@ -239,13 +252,27 @@ class PatchPositioning(nn.Module):
             _, k1 = self.momentum_encoder(x1)
             _, k2 = self.momentum_encoder(x2)
         
-        # the loss is a combination of MoCo on two patch networks, 
-        # and SimSiam between online patch and region networks
-        loss = self.moco_loss(q1, k2) + self.moco_loss(q2, k1) + \
-            self.B_T * (self.byol_loss(Q1, feat1.detach()) + \
-                        self.byol_loss(Q1, feat2.detach()) + \
-                        self.byol_loss(q1, K1.detach()) + \
-                        self.byol_loss(q2, K1.detach()))
+        loss = self.moco_loss(q1.float(), k2.float()) + self.moco_loss(q2.float(), k1.float()) + \
+            self.B_T * (self.byol_loss(Q1.float(), feat1.detach().float()) + \
+                        self.byol_loss(Q1.float(), feat2.detach().float()) + \
+                        self.byol_loss(q1.float(), K1.detach().float()) + \
+                        self.byol_loss(q2.float(), K1.detach().float()))
+        loss.type_as(q1)
+        if torch.isnan(loss):
+            with open('/mnt/petrelfs/yanfang/pretrain_tmp/codes/train/moco/nan4.log', 'a') as f:
+                # f.write('feat1: {}\n'.format(feat1))
+                # f.write('feat2: {}\n'.format(feat2))
+                # f.write('q1: {}\n'.format(q1))
+                # f.write('q2: {}\n'.format(q2))
+                # f.write('k1: {}\n'.format(k1))
+                # f.write('k2: {}\n'.format(k2))
+                f.write('outR0: {}\n'.format(out_R[:, 0]))
+                f.write('c_feat: {}\n'.format(c_feat))
+                f.write('pos1: {}\n'.format(pos1))
+                f.write('pos2: {}\n'.format(pos2))
+                # f.write('K1: {}\n'.format(K1))
+                # f.write('Q1: {}\n'.format(Q1))
+
         return loss
 
 

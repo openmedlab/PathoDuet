@@ -12,9 +12,12 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import pandas as pd
 import os
+from petrel_client.client import Client
 import numpy as np
 import cv2
 
+def check_png(name):
+    return (name) and ('png' in name)
 
 class TwoCropsTransform:
     """Take two random crops of one image"""
@@ -46,6 +49,8 @@ class Solarize(object):
 
     def __call__(self, x):
         return ImageOps.solarize(x)
+
+
 class TCGADataset(Dataset):
     def __init__(self, 
                  data_dir, 
@@ -119,3 +124,65 @@ class BridgeDataset(Dataset):
 
     def __len__(self):
         return len(self.patch_name_list)
+
+
+class BCIDataset(Dataset):
+    def __init__(self, 
+                 data_dir, 
+                 transform):
+
+        self.data_dir = data_dir
+        self.patch_name_list = [d for d in os.listdir(os.path.join(data_dir, 'HE', 'train')) if 'png' in d]
+        
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        patch_name = self.patch_name_list[idx]
+        he_path = os.path.join(self.data_dir, 'HE', 'train', patch_name)
+        ihc_path = os.path.join(self.data_dir, 'IHC', 'train', patch_name)
+        
+        # Loading images
+        he_img = Image.open(he_path).convert('RGB')
+        ihc_img = Image.open(ihc_path).convert('RGB')
+        he_img = self.transform(he_img)
+        ihc_img = self.transform(ihc_img)
+        
+        return (he_img, ihc_img)
+
+    def __len__(self):
+        return len(self.patch_name_list)
+
+
+class HyReCoDataset(Dataset):
+    def __init__(self, 
+                 data_dir, 
+                 transform):
+
+        self.data_dir = data_dir
+        self.stains = os.listdir(data_dir)
+        self.stains.remove('HE')
+        wsi_names = os.listdir(os.path.join(data_dir, 'HE'))
+        self.patch_name_list = []
+        for wsi_name in wsi_names:
+            self.patch_name_list += [d for d in os.listdir(os.path.join(data_dir, 'HE', wsi_name)) if 'png' in d]
+        
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        to_stain = self.stains[idx // len(self.patch_name_list)]
+        re_idx = idx % len(self.patch_name_list)
+        patch_name = self.patch_name_list[re_idx]
+        wsi_name = patch_name.split('_')[0]
+        he_path = os.path.join(self.data_dir, 'HE', wsi_name, patch_name)
+        ihc_path = os.path.join(self.data_dir, to_stain, wsi_name, patch_name)
+        
+        # Loading images
+        he_img = Image.open(he_path).convert('RGB')
+        ihc_img = Image.open(ihc_path).convert('RGB')
+        he_img = self.transform(he_img)
+        ihc_img = self.transform(ihc_img)
+        
+        return (he_img, ihc_img)
+
+    def __len__(self):
+        return len(self.patch_name_list)*len(self.stains)
