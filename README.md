@@ -238,7 +238,7 @@ For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTra
 
 
 **Patch Classification (IHC images)**
-We compare our model p3's performance with ImageNet-MoCo v3 and CTransPath as well. Note that the training data used in CTransPath contains some IHC slides (in PAIP). Here, X-L means the performance using linear probing (bACC stands for balanced accuracy), and X-F using full fine-tuning scheme. We find that ignoring the last ``LayerNorm`` in CTransPath and our p1/p2 model can significantly improve the performance on IHC linear evaluation, so we do not load this layer.
+We compare our model p3's performance with ImageNet-MoCo v3 and CTransPath as well. Note that the training data used in CTransPath contains some IHC slides (in PAIP). Here, X-L means the performance using linear probing (bACC stands for balanced accuracy), and X-F using full fine-tuning scheme. We find that not loading the last ``LayerNorm`` in CTransPath and our p1/p2 model can significantly improve the performance on IHC linear evaluation, so we do not load this layer.
 | Methods   |      Backbone      |  ACC-L |   bACC-L | F1-L |  ACC-F | bACC-F | F1-F |
 |----------|:----------:|:------:|:-----:|:------:|:-----:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.8137 | 0.7760 | 0.7873 | 0.9396 | 0.9248 | 0.9379 |
