@@ -101,17 +101,8 @@ class MoCo(nn.Module):
             _, k1 = self.momentum_encoder(x1)
             _, k2 = self.momentum_encoder(x2)
 
-        # loss = self.contrastive_loss(q1.float(), k2.float()) + self.contrastive_loss(q2.float(), k1.float())
         loss = self.contrastive_loss(q1.float(), k2.float()) + self.contrastive_loss(q2.float(), k1.float())
-        # loss.type_as(q1)
-        # if torch.isnan(loss):
-        #     with open('/mnt/petrelfs/yanfang/pretrain_tmp/codes/train/moco/nan2.log', 'a') as f:
-        #         f.write('tmp1: {}\n'.format(tmp1))
-        #         f.write('tmp2: {}\n'.format(tmp2))
-        #         f.write('q1: {}\n'.format(q1))
-        #         f.write('q2: {}\n'.format(q2))
-        #         f.write('k1: {}\n'.format(k1))
-        #         f.write('k2: {}\n'.format(k2))
+        loss.type_as(q1)
         return loss
 
 
@@ -258,20 +249,6 @@ class Bridge(nn.Module):
                         self.byol_loss(q1.float(), K1.detach().float()) + \
                         self.byol_loss(q2.float(), K1.detach().float()))
         loss.type_as(q1)
-        if torch.isnan(loss):
-            with open('/mnt/petrelfs/yanfang/pretrain_tmp/codes/train/moco/nan4.log', 'a') as f:
-                # f.write('feat1: {}\n'.format(feat1))
-                # f.write('feat2: {}\n'.format(feat2))
-                # f.write('q1: {}\n'.format(q1))
-                # f.write('q2: {}\n'.format(q2))
-                # f.write('k1: {}\n'.format(k1))
-                # f.write('k2: {}\n'.format(k2))
-                f.write('outR0: {}\n'.format(out_R[:, 0]))
-                f.write('c_feat: {}\n'.format(c_feat))
-                f.write('pos1: {}\n'.format(pos1))
-                f.write('pos2: {}\n'.format(pos2))
-                # f.write('K1: {}\n'.format(K1))
-                # f.write('Q1: {}\n'.format(Q1))
 
         return loss
 
