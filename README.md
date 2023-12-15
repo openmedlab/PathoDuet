@@ -20,33 +20,36 @@
 ---
 
 <!-- Select some of the point info, feel free to delete -->
+Updated on 2023.12.15. We have revolutionized PathoDuet! Now, the p2/p3 models are named HE/IHC models, and a more detailed figure about our work is updated! The paper is also done, and will be available on arXiv soon.
 Updated on 2023.08.04. Sorry for the late release. Now the p3 model is available! The paper link will be available in next update soon.
 
 
 
 ## Key Features
 
-This repository provides the official implementation of PathoDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains.
+This repository provides the official implementation of PathoDuet: Foundation Models for Pathological Slide Analysis of H&E and IHC Stains.
 
 Key feature bulletin points here
-- A foundation model for histopathological image analysis.
-- The model covers both H&E and IHC stained images.
-- The model achieves outstanding performance on both patch classification (following either a typical linear evaluation scheme, or a usual full fine-tuning scheme) and weakly-supervised WSl classification (using CLAM-SB).
+- Foundation models for histopathological image analysis.
+- The models cover both H&E and IHC stained images.
+- The H&E model achieves outstanding performance on both patch classification (following either a typical linear evaluation scheme, or a usual full fine-tuning scheme) and weakly-supervised WSl classification (using CLAM-SB).
+- The IHC model is evaluated with some in-house tasks, and shows great performance.
 
 ## Links
 
 - [Model](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM)
+- Paper: An arXiv version is coming soon.
 <!-- [Code] may link to your project at your institute>
 
 
 <!-- give a introduction of your project -->
 ## Details
 
-Our model is based on a new self-supervised learning (SSL) framework. This framework aims at exploiting characteristics of histopathological images by introducing a pretext token during the training. The pretext token is only a small piece of image, but contains special knowledge. 
+Our model is based on a new self-supervised learning (SSL) framework. This framework aims at exploiting characteristics of histopathological images by introducing a pretext token and following task raiser during the training. The pretext token is only a small piece of image, but contains special knowledge. 
 
-In task 1, patch positioning, the pretext token is a small patch contained in a large region. The special relation inspires us to position this patch in the region and use the features of the region to generate the feature of the patch in a global view. The patch is also sent to the encoder solely to obtain a local-view feature. The two features are pulled together to strengthen the model. 
+In task 1, cross-scale positioning, the pretext token is a small patch contained in a large region. The special relation inspires us to position this patch in the region and use the features of the region to generate the feature of the patch in a global view. The patch is also sent to the encoder solely to obtain a local-view feature. The two features are pulled together to strengthen the H&E model. 
 
-In task 2, multi-stain reconstruction, the pretext token is a small patch cropped from an image of one stain (H&E). The main input is the image of the other stain (IHC), and gets masked before the encoder. These two images are roughly registered, so it is possible to recover the image of the first stain giving only a small part of itself (stain information) and a whole image of the second stain (structure information). The two parts of features are concatenated and sent into the decoder, and finally reconstruct the image of the first stain.
+In task 2, cross-stain transferring, the pretext token is a small patch cropped from an image of one stain (H&E). The main input is the image of the other stain (IHC). These two images are roughly registered, so it is possible to style transfer one of them (H&E) to mimic the features of the other (IHC). The pseudo and real features are pulled together to obtain an IHC model on the basis of existing H&E model.
 
 <!-- Insert a pipeline of your algorithm here if got one -->
 <div align="center">
@@ -56,7 +59,6 @@ In task 2, multi-stain reconstruction, the pretext token is a small patch croppe
 ## Dataset Links
 
 - [The Cancer Genome Atlas (TCGA)](https://portal.gdc.cancer.gov/) for SSL.
-- [UniToPatho](https://ieee-dataport.org/open-access/unitopatho) for patch retrieval.
 - [NCT-CRC-HE](https://zenodo.org/record/1214456#.YVrmANpBwRk), also known as the Kather datasets, for patch classification.
 - [Camelyon 16](https://camelyon16.grand-challenge.org/) for weakly-supervised WSI classification.
 - [HyReCo](https://ieee-dataport.org/open-access/hyreco-hybrid-re-stained-and-consecutive-histological-serial-sections) for training in task 2.
@@ -83,11 +85,10 @@ cd PathoDuet
 
 **Download Model**
 
-If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you three versions of models.
+If you just require a pretrain model for your own task, you can find our pretrained model weights [here](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM). We now provide you two versions of models.
 
-- A purely MoCo v3 pretrained model using our H&E dataset, namely the p1 model. For those who need developing their own SSL learning method, this model can be a simple baseline.
-- A model pretrained with patch position task (p2 model). This model further strengthens its representation of H&E images.
-- A model fine-tuned towards IHC images with multi-stain reconstruction task (p3 model). This model transfers the strong H&E model to an interpreter of IHC images.
+- A model pretrained with cross-scale position task (HE model). This model further strengthens its representation of H&E images.
+- A model fine-tuned towards IHC images with cross-stain transferring task (IHC model). This model transfers the strong H&E model to an interpreter of IHC images.
 
 You can try our model by the following codes.
 
@@ -206,23 +207,22 @@ We provide performance evaluation on some downstream tasks, and compare our mode
 
 **Linear Evaluation**
 
-We first follow the typical linear evaluation protocol used in [SimCLR](http://proceedings.mlr.press/v119/chen20j.html), which freezes all layers in the pretrained model and trains a newly-added linear layer from scratch. 
+We use NCT-CRC-HE to evaluate the basic understanding of H&E images. We first follow the typical linear evaluation protocol used in [SimCLR](http://proceedings.mlr.press/v119/chen20j.html), which freezes all layers in the pretrained model and trains a newly-added linear layer from scratch. The result of CTransPath is copied from the original paper, and we also provide a reproduced one marked with a *.
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
-| ImageNet-MoCo v3 |  ViT-B/16 | 0.9347 | 0.9083 |
-| CTransPath |    Modified Swin Transformer   |   **0.9652**  | 0.9482 |
-| Ours-p1 | ViT-B/16  |    0.9561   | 0.9437 |
-| Ours-p2 | ViT-B/16  |    0.9639   | **0.9496** |
+| ImageNet-MoCo v3 |  ViT-B/16 | 0.935 | 0.908 |
+| CTransPath |    Modified Swin Transformer   |   **0.965**  | 0.948 |
+| CTransPath* |    Modified Swin Transformer   |   0.956  | 0.932 |
+| Ours-HE | ViT-B/16  |    0.964   | **0.950** |
 
 **Full Fine-tuning**
 
 In practice, pretrained models are not freezed. Therefore, we also unfreeze the pretrained encoder and finetune all parameters. It is noted that the performance of CTransPath is based on their open model.
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
-| ImageNet-MoCo v3 |  ViT-B/16 | 0.9582 | 0.9450 |
-| CTransPath |    Modified Swin Transformer   |   0.9691 | 0.9601  |
-| Ours-p1 | ViT-B/16  |    0.9726 | 0.9602  |
-| Ours-p2 | ViT-B/16  |    **0.9731** | **0.9636**  |
+| ImageNet-MoCo v3 |  ViT-B/16 | 0.958 | 0.945 |
+| CTransPath |    Modified Swin Transformer   |   0.969 | 0.960  |
+| Ours-HE | ViT-B/16  |    **0.973** | **0.964**  |
 
 
 **WSI Classification**
@@ -233,18 +233,32 @@ For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTra
 |----------|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
 | CLAM-SB | 0.884 | 0.940 | 0.894 | 0.951 | 0.929 | 0.986|
 | CLAM-SB + CTP (Repro) | 0.868 | 0.940 | 0.904 | 0.956 | 0.928 | 0.987 |
-| CLAM-SB + Ours-p1 | 0.912 | **0.959** | 0.890 | 0.937 | 0.948 | 0.992 |
-| CLAM-SB + Ours-p2 | **0.930** | 0.956 | **0.908** | **0.963** | **0.954** | **0.993** |
+| CLAM-SB + Ours-HE | **0.930** | **0.956** | **0.908** | **0.963** | **0.954** | **0.993** |
 
 
-**Patch Classification (IHC images)**
-We compare our model p3's performance with ImageNet-MoCo v3 and CTransPath as well. Note that the training data used in CTransPath contains some IHC slides (in PAIP). Here, X-L means the performance using linear probing (bACC stands for balanced accuracy), and X-F using full fine-tuning scheme. We find that not loading the last ``LayerNorm`` in CTransPath and our p1/p2 model can significantly improve the performance on IHC linear evaluation, so we do not load this layer.
-| Methods   |      Backbone      |  ACC-L |   bACC-L | F1-L |  ACC-F | bACC-F | F1-F |
-|----------|:----------:|:------:|:-----:|:------:|:-----:|:------:|:-----:|
-| ImageNet-MoCo v3 |  ViT-B/16 | 0.8137 | 0.7760 | 0.7873 | 0.9396 | 0.9248 | 0.9379 |
-| CTransPath |    Modified SwinT   |  0.8567   | 0.8535 | 0.8598 |  **0.9621**   | 0.9530 | 0.9582 |
-| Ours-p3 | ViT-B/16  |   **0.8731**    | **0.8571** | **0.8611** |   **0.9621**    | **0.9588** | **0.9605** |
+**PD-L1 Expression Level Assessment (IHC images)**
 
+Assessing IHC markers' expression levels is one of the primary tasks for pathologists to evaluate an IHC slide. We formulate this task as a 4-class classification task, with carefully selected thresholds. We compare our IHC model's performance with ImageNet-MoCo v3 and CTransPath as well. The metrics include accuracy (ACC), balanced accuracy (bACC) and weighted F1 score (wF1). Here, we give the performance with a limited amount of training data. 
+
+| Methods   |      Backbone      |  ACC |   bACC | wF1 |
+|----------|:----------:|:------:|:-----:|:------:|
+| ImageNet-MoCo v3 |  ViT-B/16 | 0.686 | 0.698 | 0.695 |
+| CTransPath |    Modified SwinT   |  0.700   | 0.709 | 0.703 |
+| Ours-IHC | ViT-B/16  |   **0.726**    | **0.721** | **0.732** | 
+
+
+**Cross-Site Tumor Identification (IHC images)**
+
+Tumor identification is also of great importance. We formulate this task as a 2-class classification task, with/without tumor cells in the given patch. The metrics include accuracy (ACC) and F1 score (F1). Here, we give the performance in the case of 1) an in-site setting, and 2) an out-of-distribution setting. In the first setting, we use a small group of data from site 1 to train the models in a linear protocol, and evaluate on another group of data from site 1. In the second setting, we train the models with more data in site 1, and evaluate on data from an unseen site 2.
+
+| Methods   |      Backbone      |  ACC |   F1 | ACC (OOD) | F1 (OOD) |
+|----------|:----------:|:------:|:-----:|:------:|:------:|
+| ImageNet-MoCo v3 |  ViT-B/16 | 0.864 | 0.862 | 0.504 | 0.503 |
+| CTransPath |    Modified SwinT   |  0.872   | 0.870 | 0.677 | 0.657 |
+| Ours-IHC | ViT-B/16  |   **0.900**    | **0.900** | **0.826** | **0.769** |
+
+
+**More Results can be found in our later released paper!**
 
 
 ## 🛡️ License
