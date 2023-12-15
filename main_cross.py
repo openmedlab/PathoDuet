@@ -27,11 +27,11 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+# from petrel_client.utils.data import DataLoader
 import torchvision.models as torchvision_models
 from torch.utils.tensorboard import SummaryWriter
 
 import moco.builder
-import moco.mae
 import moco.loader
 import moco.optimizer
 
@@ -45,9 +45,11 @@ torchvision_model_names = sorted(name for name in torchvision_models.__dict__
 
 model_names = ['vit_small', 'vit_base', 'vit_conv_small', 'vit_conv_base'] + torchvision_model_names
 
-parser = argparse.ArgumentParser(description='Multi-stain Reconstruction Fine-tuning')
+parser = argparse.ArgumentParser(description='MoCo ImageNet Pre-Training')
 parser.add_argument('data', metavar='PATH',
                     help='PATH to dataset')
+parser.add_argument('--tcga', metavar='PATH',
+                    help='path to a csv record of used TCGA')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vit_base',
                     choices=model_names,
                     help='model architecture: ' +
@@ -102,6 +104,15 @@ parser.add_argument('--moco-dim', default=256, type=int,
                     help='feature dimension (default: 256)')
 parser.add_argument('--moco-mlp-dim', default=4096, type=int,
                     help='hidden dimension in MLPs (default: 4096)')
+parser.add_argument('--moco-m', default=0.99, type=float,
+                    help='moco momentum of updating momentum encoder (default: 0.99)')
+parser.add_argument('--moco-m-cos', action='store_true',
+                    help='gradually increase moco momentum to 1 with a '
+                         'half-cycle cosine schedule')
+parser.add_argument('--moco-t', default=1.0, type=float,
+                    help='softmax temperature (default: 1.0)')
+parser.add_argument('--bridge-t', default=1.0, type=float,
+                    help='bridging coefficient weighting MoCo and SimSiam (default: 1.0)')
 
 # vit specific configs:
 parser.add_argument('--stop-grad-conv1', action='store_true',
@@ -113,6 +124,8 @@ parser.add_argument('--optimizer', default='lars', type=str,
                     help='optimizer used (default: lars)')
 parser.add_argument('--warmup-epochs', default=10, type=int, metavar='N',
                     help='number of warmup epochs')
+parser.add_argument('--crop-min', default=0.08, type=float,
+                    help='minimum scale for random cropping (default: 0.08)')
 
 def main():
     args = parser.parse_args()
@@ -176,7 +189,9 @@ def main_worker(gpu, ngpus_per_node, args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     if args.arch.startswith('vit'):
-        model = moco.mae.mae()
+        model = moco.builder.CrossStain(
+            partial(vits.__dict__[args.arch], pretext_token=True, stop_grad_conv1=args.stop_grad_conv1, global_pool='avg'),
+            args.moco_dim, args.moco_mlp_dim, args.moco_t)
     else:
         raise NotImplementedError('Only support ViT ...')
 
@@ -204,7 +219,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
-            model = torch.nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
+            model = torch.nn.parallel.DistributedDataParallel(model)
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
@@ -236,20 +251,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 # Map model to be loaded to specified single gpu.
                 loc = 'cuda:{}'.format(args.gpu)
                 checkpoint = torch.load(args.firstphase, map_location=loc)
-            state_dict = checkpoint['state_dict']
-            for k in list(state_dict.keys()):
-                # retain only base_encoder up to before the embedding layer
-                if k.startswith('module.base_encoder') and not k.startswith('module.base_encoder.%s' % 'head'):
-                    # remove prefix
-                    state_dict['module.'+k[len("module.base_encoder."):]] = state_dict[k]
-                # delete renamed or unused k
-                del state_dict[k]
-            # change the key's name if possible
-            # state_dict['module.pretext_token'] = state_dict['module.bridge_token']
-            # del state_dict['module.bridge_token']
-            state_dict['module.norm.weight'] = state_dict['module.fc_norm.weight']
-            state_dict['module.norm.bias'] = state_dict['module.fc_norm.bias']
-            model.load_state_dict(state_dict, strict=False)
+            model.load_state_dict(checkpoint['state_dict'], strict=False)
             print("=> loaded checkpoint '{}' in first stage"
                   .format(args.firstphase))
         else:
@@ -281,20 +283,53 @@ def main_worker(gpu, ngpus_per_node, args):
     # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
     #                                  std=[0.229, 0.224, 0.225])
 
-    # avoid using augmentations that change the spatial relation
-    augmentation = [
+    augmentation_he = [
         transforms.Resize(224),
-        transforms.ColorJitter(0.4, 0.4, 0.2),
+        transforms.CenterCrop(224),
+        transforms.RandomApply([
+            transforms.ColorJitter(0.4, 0.4, 0.2, 0.04)  # not strengthened
+        ], p=0.8),
+        moco.loader.GaussianBlur([.1, 2.]),
+        transforms.RandomHorizontalFlip(),
         transforms.ToTensor()
     ]
 
-    BCI_dataset = moco.loader.BCIDataset(data_dir=os.path.join(traindir, 'BCI_dataset'), 
-                                             transform=transforms.Compose(augmentation))
-    HyReCo2_dataset = moco.loader.HyReCoDataset(data_dir=os.path.join(traindir, 'hyreco_patch'), 
-                                             transform=transforms.Compose(augmentation))
-    HyReCo4_dataset = moco.loader.HyReCoDataset(data_dir=os.path.join(traindir, 'hyreco_mulpatch'), 
-                                             transform=transforms.Compose(augmentation))
-    train_dataset = torch.utils.data.ConcatDataset([BCI_dataset, HyReCo2_dataset, HyReCo4_dataset)
+    color_jitter = transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.2, 0.04)], p=0.8)
+
+    augmentation_ihc_large = [
+        transforms.Resize(224),
+        transforms.CenterCrop(224),
+        moco.loader.GaussianBlur([.1, 2.]),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor()
+    ]
+
+    augmentation_ihc_little = [
+        transforms.Resize(64),
+        transforms.RandomCrop(16),
+        moco.loader.GaussianBlur([.1, 2.]),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor()
+    ]
+
+    bci_dataset = moco.loader.BCIDataset(
+        os.path.join(traindir, 'BCI_dataset'), 
+        transforms.Compose(augmentation_he),
+        transforms.Compose(augmentation_ihc_large), 
+        transforms.Compose(augmentation_ihc_little), 
+        color_jitter
+        )
+
+    hyreco_dataset1 = moco.loader.HyReCoDataset(
+        os.path.join(traindir, 'hyreco_patch'), 
+        transforms.Compose(augmentation_he),
+        transforms.Compose(augmentation_ihc_large), 
+        transforms.Compose(augmentation_ihc_little), 
+        color_jitter
+        )
+    
+    train_dataset = torch.utils.data.ConcatDataset([bci_dataset, hyreco_dataset1])
+
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -302,7 +337,8 @@ def main_worker(gpu, ngpus_per_node, args):
         train_sampler = None
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None), 
-                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
+                                               num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True,
+                                               persistent_workers=False)
 
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -339,23 +375,27 @@ def train(train_loader, model, optimizer, scaler, summary_writer, epoch, args):
 
     end = time.time()
     iters_per_epoch = len(train_loader)
-    for i, images in enumerate(train_loader):
+    moco_m = args.moco_m
+    for i, (img_he, img_ihc, stain) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
         # adjust learning rate and momentum coefficient per iteration
         lr = adjust_learning_rate(optimizer, epoch + i / iters_per_epoch, args)
         learning_rates.update(lr)
+        if args.moco_m_cos:
+            moco_m = adjust_moco_momentum(epoch + i / iters_per_epoch, args)
 
         if args.gpu is not None:
-            images[0] = images[0].cuda(args.gpu, non_blocking=True)
-            images[1] = images[1].cuda(args.gpu, non_blocking=True)
+            img_he = img_he.cuda(args.gpu, non_blocking=True)
+            img_ihc = img_ihc.cuda(args.gpu, non_blocking=True)
+            stain = stain.cuda(args.gpu, non_blocking=True)
 
         # compute output
         with torch.cuda.amp.autocast(True):
-            loss, _, _ = model(images[1], images[0])
+            loss = model(img_he, img_ihc, stain, moco_m)
 
-        losses.update(loss.item(), patch1.size(0))
+        losses.update(loss.item(), img_he.size(0))
         if args.rank == 0:
             summary_writer.add_scalar("loss", loss.item(), epoch * iters_per_epoch + i)
 
@@ -429,6 +469,12 @@ def adjust_learning_rate(optimizer, epoch, args):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     return lr
+
+
+def adjust_moco_momentum(epoch, args):
+    """Adjust moco momentum based on current epoch"""
+    m = 1. - 0.5 * (1. + math.cos(math.pi * epoch / args.epochs)) * (1. - args.moco_m)
+    return m
 
 
 if __name__ == '__main__':
