@@ -12,7 +12,6 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import pandas as pd
 import os
-from petrel_client.client import Client
 import numpy as np
 import cv2
 
@@ -50,24 +49,32 @@ class Solarize(object):
     def __call__(self, x):
         return ImageOps.solarize(x)
 
-
 class TCGADataset(Dataset):
     def __init__(self, 
                  data_dir, 
                  used_TCGA, 
                  transform=None):
-        # data storage: *data_dir*/TCGA-xxxx/region(patch)/xxxxx.png
+        # data_dir: *TCGA_crop*/TCGA-xxxx/region(patch)/xxxxx.png
+        
+        # get all img paths
+
         self.data_paths = []
         for tcga in used_TCGA:
-            data_prefix = os.path.join(data_dir, tcga)
-            patch_paths = [os.path.join(data_prefix, 'patch', d) for d in os.listdir(os.path.join(data_prefix, 'patch'))]
-            region_paths = [os.path.join(data_prefix, 'region', d) for d in  os.listdir(os.path.join(data_prefix, 'region'))]
+            path_prefix = os.path.join(data_dir, tcga)
+            patch_paths = [os.path.join(path_prefix,'patch',d) for d in os.listdir(os.path.join(path_prefix,'patch')) if check_png(d)]
+            region_paths = [os.path.join(path_prefix,'region',d) for d in os.listdir(os.path.join(path_prefix,'region')) if check_png(d)]
             self.data_paths += patch_paths + region_paths
         self.transform = transform
 
     def __getitem__(self, idx):
         img_path = self.data_paths[idx]
-        img = Image.open(img_path).convert('RGB')
+        
+        try:
+            img = Image.open(img_path).convert('RGB')
+        except:
+            img = Image.new('RGB', (224,224))
+
+
         if self.transform is not None:
             img = self.transform(img)
         
@@ -81,18 +88,20 @@ class BridgeDataset(Dataset):
     def __init__(self, 
                  data_dir, 
                  used_TCGA, 
+                 meta_info_path, 
                  patch_transform, 
                  region_transform):
         
         # data_dir: *TCGA_crop*/TCGA-xxxx/region(patch)/xxxxx.png
-
+        
         self.data_dir = data_dir
         self.patch_name_list = []
-        for tcga in used_TCGA:
-            data_prefix = os.path.join(data_dir, tcga)
-            patch_paths = [os.path.join(tcga, 'patch', d) for d in os.listdir(os.path.join(data_prefix, 'patch'))]
-            self.patch_name_list += patch_paths
 
+        for tcga in used_TCGA:
+            path_prefix = os.path.join(data_dir, tcga)
+            patch_suffixes = [os.path.join(tcga,'patch',d) for d in os.listdir(os.path.join(path_prefix,'patch')) if check_png(d)]
+            self.patch_name_list += patch_suffixes
+        
         self.patch_transform = patch_transform
         self.region_transform = region_transform
         self.ref_transform = transforms.Compose([
@@ -106,15 +115,19 @@ class BridgeDataset(Dataset):
             ])
 
     def __getitem__(self, idx):
-        patch_name = self.patch_name_list[idx]  # TCGA-xxxx/patch/a_b_c.png c=0, 1, ..., 8
+        patch_name = self.patch_name_list[idx]  # TCGA-xxxx/patch/a_b_c.png c=0, 1, ..., 5
         region_name = patch_name[:-6] + '.png'  # TCGA-xxxx/region/a_b.png
         region_name = region_name.replace('patch', 'region')
         patch_path = self.data_dir + patch_name
         region_path = self.data_dir + region_name
         
-        # Loading images
-        patch = Image.open(patch_path).convert('RGB')
-        region = Image.open(region_path).convert('RGB')
+        try:
+            patch = Image.open(patch_path).convert('RGB')
+            region = Image.open(region_path).convert('RGB')
+        except:
+            patch = Image.new('RGB', (224,224))
+            region = Image.new('RGB', (224,224))
+
         
         patchs = self.patch_transform(patch)
         region = self.region_transform(region)
@@ -125,16 +138,21 @@ class BridgeDataset(Dataset):
     def __len__(self):
         return len(self.patch_name_list)
 
-
 class BCIDataset(Dataset):
     def __init__(self, 
                  data_dir, 
-                 transform):
+                 transform_he,
+                 transform_ihc,
+                 transform_ihc_little,
+                 color_jitter_ihc):
 
         self.data_dir = data_dir
         self.patch_name_list = [d for d in os.listdir(os.path.join(data_dir, 'HE', 'train')) if 'png' in d]
         
-        self.transform = transform
+        self.transform_he = transform_he
+        self.transform_ihc = transform_ihc
+        self.transform_ihc_little = transform_ihc_little
+        self.color_jitter_ihc = color_jitter_ihc
 
     def __getitem__(self, idx):
         patch_name = self.patch_name_list[idx]
@@ -144,19 +162,25 @@ class BCIDataset(Dataset):
         # Loading images
         he_img = Image.open(he_path).convert('RGB')
         ihc_img = Image.open(ihc_path).convert('RGB')
-        he_img = self.transform(he_img)
-        ihc_img = self.transform(ihc_img)
+
+        he_img = self.transform_he(he_img)
+
+        ihc_img = self.color_jitter_ihc(ihc_img)
+        ihc_img_little = self.transform_ihc_little(ihc_img)
+        ihc_img = self.transform_ihc(ihc_img)
         
-        return (he_img, ihc_img)
+        return (he_img, ihc_img, ihc_img_little)
 
     def __len__(self):
         return len(self.patch_name_list)
 
-
 class HyReCoDataset(Dataset):
     def __init__(self, 
-                 data_dir, 
-                 transform):
+                 data_dir,
+                 transform_he,
+                 transform_ihc,
+                 transform_ihc_little,
+                 color_jitter_ihc):
 
         self.data_dir = data_dir
         self.stains = os.listdir(data_dir)
@@ -166,7 +190,10 @@ class HyReCoDataset(Dataset):
         for wsi_name in wsi_names:
             self.patch_name_list += [d for d in os.listdir(os.path.join(data_dir, 'HE', wsi_name)) if 'png' in d]
         
-        self.transform = transform
+        self.transform_he = transform_he
+        self.transform_ihc = transform_ihc
+        self.transform_ihc_little = transform_ihc_little
+        self.color_jitter_ihc = color_jitter_ihc
 
     def __getitem__(self, idx):
         to_stain = self.stains[idx // len(self.patch_name_list)]
@@ -179,10 +206,14 @@ class HyReCoDataset(Dataset):
         # Loading images
         he_img = Image.open(he_path).convert('RGB')
         ihc_img = Image.open(ihc_path).convert('RGB')
-        he_img = self.transform(he_img)
-        ihc_img = self.transform(ihc_img)
         
-        return (he_img, ihc_img)
+        he_img = self.transform_he(he_img)
+
+        ihc_img = self.color_jitter_ihc(ihc_img)
+        ihc_img_little = self.transform_ihc_little(ihc_img)
+        ihc_img = self.transform_ihc(ihc_img)
+        
+        return (he_img, ihc_img, ihc_img_little)
 
     def __len__(self):
         return len(self.patch_name_list)*len(self.stains)
