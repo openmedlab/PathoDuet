@@ -21,7 +21,8 @@
 
 <!-- Select some of the point info, feel free to delete -->
 Updated on 2023.12.15. We have revolutionized PathoDuet! Now, the p2/p3 models are named HE/IHC models, and a more detailed figure about our work is updated! The paper is also done, and will be available on arXiv soon.
-Updated on 2023.08.04. Sorry for the late release. Now the p3 model is available! The paper link will be available in next update soon.
+
+~~Updated on 2023.08.04. Sorry for the late release. Now the p3 model is available! The paper link will be available in next update soon.~~
 
 
 
