@@ -211,9 +211,9 @@ We use NCT-CRC-HE to evaluate the basic understanding of H&E images. We first fo
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.935 | 0.908 |
-| CTransPath |    Modified Swin Transformer   |   **0.965**  | 0.948 |
+| CTransPath |    Modified Swin Transformer   |   **0.965**  | _0.948_ |
 | CTransPath* |    Modified Swin Transformer   |   0.956  | 0.932 |
-| Ours-HE | ViT-B/16  |    0.964   | **0.950** |
+| Ours-HE | ViT-B/16  |    _0.964_   | **0.950** |
 
 **Full Fine-tuning**
 
@@ -221,7 +221,7 @@ In practice, pretrained models are not freezed. Therefore, we also unfreeze the 
 | Methods   |      Backbone      |  ACC |   F1 |
 |----------|:-------------:|:------:|:-----:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.958 | 0.945 |
-| CTransPath |    Modified Swin Transformer   |   0.969 | 0.960  |
+| CTransPath |    Modified Swin Transformer   |   _0.969_ | _0.960_  |
 | Ours-HE | ViT-B/16  |    **0.973** | **0.964**  |
 
 
@@ -231,8 +231,8 @@ For WSI classification, we reproduce the performance of CLAM-SB. Meanwhile, CTra
 
 | Methods   |   CAMELYON16: ACC |  CAMELYON16: AUC |  TCGA-NSCLC: ACC |  TCGA-NSCLC: AUC |  TCGA-RCC: ACC |  TCGA-RCC: AUC |
 |----------|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
-| CLAM-SB | 0.884 | 0.940 | 0.894 | 0.951 | 0.929 | 0.986|
-| CLAM-SB + CTP (Repro) | 0.868 | 0.940 | 0.904 | 0.956 | 0.928 | 0.987 |
+| CLAM-SB | _0.884_ | _0.940_ | 0.894 | 0.951 | _0.929_ | 0.986|
+| CLAM-SB + CTP (Repro) | 0.868 | _0.940_ | _0.904_ | _0.956_ | 0.928 | _0.987_ |
 | CLAM-SB + Ours-HE | **0.930** | **0.956** | **0.908** | **0.963** | **0.954** | **0.993** |
 
 
@@ -243,7 +243,7 @@ Assessing IHC markers' expression levels is one of the primary tasks for patholo
 | Methods   |      Backbone      |  ACC |   bACC | wF1 |
 |----------|:----------:|:------:|:-----:|:------:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.686 | 0.698 | 0.695 |
-| CTransPath |    Modified SwinT   |  0.700   | 0.709 | 0.703 |
+| CTransPath |    Modified SwinT   |  _0.700_   | _0.709_ | _0.703_ |
 | Ours-IHC | ViT-B/16  |   **0.726**    | **0.721** | **0.732** | 
 
 
@@ -254,9 +254,21 @@ Tumor identification is also of great importance. We formulate this task as a 2-
 | Methods   |      Backbone      |  ACC |   F1 | ACC (OOD) | F1 (OOD) |
 |----------|:----------:|:------:|:-----:|:------:|:------:|
 | ImageNet-MoCo v3 |  ViT-B/16 | 0.864 | 0.862 | 0.504 | 0.503 |
-| CTransPath |    Modified SwinT   |  0.872   | 0.870 | 0.677 | 0.657 |
+| CTransPath |    Modified SwinT   |  _0.872_   | _0.870_ | _0.677_ | _0.657_ |
 | Ours-IHC | ViT-B/16  |   **0.900**    | **0.900** | **0.826** | **0.769** |
 
+
+
+**Comparison with Giant Pathological Models**
+
+We also compare our model to some giant models pretrained with ultra-large amounts of pathological slides, namely UNI and Virchow. We use the NCT-CRC-HE and NCT-CRC-HE-NONORM (marked with a *), and copy the results from Virchow. To note, the result of CTransPath is also a copy from Virchow, so it is slightly different from previous results reproduced by us, but the gap is as small as 0.001 or 0.002, which is acceptable as randomness. The training parameters are similar to Virchow's. but we change the batch size to 512 and a rescaled learning rate as 0.001/8=0.000125, and we use typical augmentations like random crop and scale, random flip and random rotation. 
+
+| Methods   |      Backbone      |      #WSIs      |  ACC |   bACC | wF1 |  ACC* |   bACC* | wF1* |
+|----------|:----------:|:------:|:-----:|:------:|:------:|:------:|:------:|:------:|
+| Ours-H&E |  ViT-B | ~11K | _0.964_ | _0.952_ | _0.964_ | _0.888_ | _0.875_ | _0.894_ |
+| CTransPath |    Modified SwinT   |  ~32K | 0.958   | 0.931 | 0.955 | 0.879 | 0.852 | 0.883 |
+| UNI | ViT-L  |  ~100K |  -    | - | - |- | 0.874 | 0.875 |
+| Virchow | ViT-H  |  ~1.5M |  **0.968**    | **0.956** | **0.968** | **0.948** | **0.938** | **0.950** |
 
 **More Results can be found in our later released paper!**
 
