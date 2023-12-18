@@ -20,7 +20,7 @@
 ---
 
 <!-- Select some of the point info, feel free to delete -->
-Updated on 2023.12.15. We have revolutionized PathoDuet! Now, the p2/p3 models are named HE/IHC models, and a more detailed figure about our work is updated! The paper is also done, and will be available on arXiv soon.
+Updated on 2023.12.15. We have revolutionized PathoDuet! Now, the p2/p3 models are named HE/IHC models, and a more detailed figure about our work is updated! ~~The paper is also done, and will be available on arXiv soon.~~ The paper is available now.
 
 ~~Updated on 2023.08.04. Sorry for the late release. Now the p3 model is available! The paper link will be available in next update soon.~~
 
@@ -39,7 +39,7 @@ Key feature bulletin points here
 ## Links
 
 - [Model](https://drive.google.com/drive/folders/1aQHGabQzopSy9oxstmM9cPeF7QziIUxM)
-- Paper: An arXiv version is coming soon.
+- [Paper](https://arxiv.org/abs/2312.09894)
 <!-- [Code] may link to your project at your institute>
 
 
@@ -285,4 +285,14 @@ This project is under the CC-BY-NC 4.0 license. See [LICENSE](LICENSE) for detai
 
 ## 📝 Citation
 
-If you find this repository useful, please consider citing our later released paper.
+If you find this repository useful, please consider citing our arXiv paper.
+```
+@misc{hua2023pathoduet,
+      title={PathoDuet: Foundation Models for Pathological Slide Analysis of H&E and IHC Stains}, 
+      author={Shengyi Hua and Fang Yan and Tianle Shen and Xiaofan Zhang},
+      year={2023},
+      eprint={2312.09894},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
