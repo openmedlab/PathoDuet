@@ -1,4 +1,4 @@
-# [Model/Code] PathoDuet: Foundation Model for Pathological Slide Analysis of H&E and IHC Stains
+# [Model/Code] PathoDuet: Foundation Models for Pathological Slide Analysis of H&E and IHC Stains
 <!-- select Model and/or Data and/or Code as needed>
 ### Welcome to OpenMEDLab! 👋
 
@@ -63,7 +63,7 @@ In task 2, cross-stain transferring, the pretext token is a small patch cropped 
 - [NCT-CRC-HE](https://zenodo.org/record/1214456#.YVrmANpBwRk), also known as the Kather datasets, for patch classification.
 - [Camelyon 16](https://camelyon16.grand-challenge.org/) for weakly-supervised WSI classification.
 - [HyReCo](https://ieee-dataport.org/open-access/hyreco-hybrid-re-stained-and-consecutive-histological-serial-sections) for training in task 2.
-- [BCI Dataset](https://bci.grand-challenge.org/) for training in task 2 and evaluation on classification.
+- [BCI Dataset](https://bci.grand-challenge.org/) for training in task 2.
 
 ## Get Started
 
